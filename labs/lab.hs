@@ -4,6 +4,24 @@ nthPalPrime x
     | x < 5 = primePalindromes !! (x - 1)
     | otherwise = primePalindromes !! (x - 2)
 
+
+
+
+isPrime :: Integer -> Bool
+isPrime 2 = True
+isPrime n = odd n && aux 3 n && n > 2
+
+aux :: Integer -> Integer -> Bool
+aux m n = n < m * m || (mod n m /= 0 && aux (m + 2) n)
+
+
+
+
+
+
+
+
+
 palindromicPrimes :: [Integer]
 palindromicPrimes = [d | d <- primes, isPalindrome d]
 
@@ -43,4 +61,3 @@ reverseDigits = go 0
     go rev x = go (rev * 10 + x `mod` 10) (x `div` 10)
 
 
-isPrime n = n == head (dropWhile (< n) primes)
