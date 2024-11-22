@@ -1,6 +1,11 @@
 intervalSums :: Int -> Int
-intervalSums n = length [k | k <- [1..2 * n], 2 * n `mod` k == 0, isValid k] - 1
+intervalSums 1 = 0
+intervalSums n 
+  | mod n 2 == 1 = aux 1 0 1 1
+  | otherwise = aux 0 0 1 1
   where
-    isValid k =
-      let a = (2 * n `div` k - k + 1) `div` 2
-      in a > 0  -- Ensure a is positive
+    aux i sum x y
+      | x > div (n - 2) 2 = i 
+      | sum < n = aux i (sum + y) x (y + 1)
+      | sum > n = aux i (sum - x) (x + 1) y
+      | otherwise = aux (i + 1) (sum - x + y) (x + 1) (y + 1)
