@@ -1,5 +1,3 @@
-import Data.Bits
-
 --check if a number is prime
 isPrime :: Integer -> Bool
 isPrime 2 = True
@@ -25,6 +23,6 @@ poulet x = fromInteger (poulets !! x)
 expmod :: Integer -> Integer -> Integer -> Integer
 expmod a 0 m = 1
 expmod a n m
-  | n .&. 1 == 0   = expmod (mod square m) (shiftR n 1) m
+  | mod n 2 == 0   = expmod (mod square m) (div n 2) m
   | otherwise        = mod (a * (expmod a (n - 1) m)) m
   where square = a * a
