@@ -1,9 +1,5 @@
 import Data.Char
 import Text.ParserCombinators.Parsec.Prim (token)
-{- FUNCTIONAL PROGRAMMING  -}
-{- Ravi Maingot (S4062760) -}
-{- ----- HOMEWORK 2 -----  -}
-{- ------- TASK 6 -------  -}
 
 rpn2prefix :: String -> String
 rpn2prefix xs = (rpn2prefix1 xs) ++ (rpn2prefix2 xs)
@@ -23,13 +19,6 @@ rpn2prefix2 xs = r2p "" (drop (fromIntegral(lexxySignCount (lexxy xs)+1)) (lexxy
    | c==0 = str ++ " " ++ tok ++ ")"
    | otherwise = r2p (str ++ " " ++ tok ++ ")") token (c-1)
 
-{--
-   | null token = str ++ " " ++ tok ++ ")"
-   | even c = r2p (str++" (") (tok:token) (c+1)
-   | isDigit (head tok) = r2p (str ++ tok ++ ")") token (c+1)
-   | elem (head tok) "*+-" = r2p ("("++tok++")") token (c+1)
-   | otherwise = r2p (str ++ "(div)") token (c+1)
-   --}
 lexxyNumCount :: [String] -> Integer 
 lexxyNumCount xs = sum[1 | d <- xs, isDigit (head d)]
 
