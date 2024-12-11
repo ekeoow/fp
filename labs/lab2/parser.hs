@@ -1,80 +1,110 @@
+{- These imports (System.*) are necessary for error reporting followed by an abort.
+ - The way this is performed is a hack, and certainly not a clean functional style.
+ - However, accept it and only use it for error reporting (it is better than using "error").
+ -} 
 import System.IO.Unsafe
 import System.Exit
+
+-- Data.Char is quite useful. It offers functions like "isAlpha", etc.
 import Data.Char
 
--- Error handling functions
-abortParser :: String -> (Integer, [String])
+
+-----------------------------------------------------------------------------------------------
+
+{- the abortParser and abortLexer 'functions' are hacky. Just accept it.
+ - they actually do not return. They print an error message and gracefully abort the program.
+ -}
+abortParser :: String -> (String,[String])
+-- the type of this function is to keep the type system happy.
 abortParser errMessage = unsafePerformIO (die errMessage)
 
 abortLexer :: String -> [String]
+-- the type of this function is to keep the type system happy.
 abortLexer errMessage = unsafePerformIO (die errMessage)
 
--- Lexer
+
+-----------------------------------------------
+
+
+
+{- parser for the grammar:
+    S  -> E
+    E  -> T E'
+    E' -> + T E'
+    E' -> - T E'
+    E' -> <empty string>
+    T  -> F T'
+    T' -> * F T' | / F T' | % F T' | epsilon
+    F  -> (E) | <digits>
+-}
+
+
 lexer :: String -> [String]
 lexer [] = []
 lexer (c:cs)
   | elem c "\n\t "    = lexer cs -- skip whitespace
-  | elem c "+-*/%()"  = [c] : lexer cs
-  | isDigit c         = (c : takeWhile isDigit cs) : lexer (dropWhile isDigit cs)
+  | elem c "+-*/%()"  = [c]:lexer cs
+  | isDigit c         = (c:takeWhile isDigit cs):lexer (dropWhile isDigit cs)
   | otherwise         = abortLexer $ "Lexical error: invalid character '" ++ [c] ++ "' in input"
 
--- Parsing functions
-parseS :: [String] -> (Integer, [String])
+-- rule: S  -> E
+parseS :: String -> [String] -> (String,[String])
 parseS = parseE
 
--- Parse E -> T E'
-parseE :: [String] -> (Integer, [String])
-parseE tokens = parseE' acc rest
-  where (acc, rest) = parseT tokens
+-- rule: E  -> T E'
+parseE :: String -> [String] -> (String,[String])
+parseE accepted tokens = parseE' acc rest
+  where (acc, rest) = parseT accepted tokens
 
--- Parse E' -> + T E' | - T E' | <empty>
-parseE' :: Integer -> [String] -> (Integer, [String])
-parseE' acc ("+":tokens) =
-  let (val, rest) = parseT tokens
-   in parseE' (acc + val) rest
-parseE' acc ("-":tokens) =
-  let (val, rest) = parseT tokens
-   in parseE' (acc - val) rest
-parseE' acc tokens = (acc, tokens)
+-- rules: E' -> + T E'
+--        E' -> - T E'
+--        E' -> <empty string>
+parseE' :: String -> [String] -> (String,[String])
+parseE' accepted ("+":tokens) =  
+  let (acc,rest) = parseT (accepted++"+") tokens 
+    in parseE' acc rest
+parseE' accepted ("-":tokens) =  
+  let (acc,rest) = parseT (accepted++"-") tokens 
+    in parseE' acc rest
+parseE' accepted tokens =  (accepted, tokens)
 
--- Parse T -> F T'
-parseT :: [String] -> (Integer, [String])
-parseT tokens = parseT' acc rest
-  where (acc, rest) = parseF tokens
+-- rule: T  -> F T'
+parseT :: String -> [String] -> (String, [String])
+parseT accepted tokens = parseT' acc rest
+  where (acc, rest) = parseF accepted tokens
 
--- Parse T' -> * F T' | / F T' | % F T' | <empty>
-parseT' :: Integer -> [String] -> (Integer, [String])
-parseT' acc ("*":tokens) =
-  let (val, rest) = parseF tokens
-   in parseT' (acc * val) rest
-parseT' acc ("/":tokens) =
-  let (val, rest) = parseF tokens
-   in parseT' (acc `div` val) rest
-parseT' acc ("%":tokens) =
-  let (val, rest) = parseF tokens
-   in parseT' (acc `mod` val) rest
-parseT' acc tokens = (acc, tokens)
+-- rules: T' -> * F T'
+--        T' -> / F T'
+--        T' -> % F T'
+--        T' -> <empty string>
+parseT' :: String -> [String] -> (String,[String])
+parseT' accepted ("*":tokens) =  
+  let (acc,rest) = parseF (accepted++"*") tokens 
+    in parseT' acc rest
+parseT' accepted ("/":tokens) =  
+  let (acc,rest) = parseF (accepted++"/") tokens 
+    in parseT' acc rest
+parseT' accepted ("%":tokens) =  
+  let (acc,rest) = parseF (accepted++"%") tokens 
+    in parseT' acc rest
+parseT' accepted tokens =  (accepted, tokens)
 
--- Parse F -> (E) | <integer>
-parseF :: [String] -> (Integer, [String])
-parseF ("(":tokens) =
-  let (val, rest) = parseE tokens
-   in case rest of
-        (")":rest') -> (val, rest')
-        _ -> abortParser "Parse error: missing closing parenthesis"
-parseF (tok:tokens)
-  | all isDigit tok = (read tok :: Integer, tokens)
-  | otherwise       = abortParser $ "Syntax Error: unexpected '" ++ tok ++ "'"
-parseF [] = abortParser "Parse error: unexpected end of input"
+expect :: String -> String-> [String] -> (String, [String])
+expect _ _ [] = abortParser "Parse error...truncated input....abort"
+expect exp accepted (tok:tokens)
+ | exp == tok = (accepted++exp,tokens)
+ | otherwise  = abortParser $ "Parse error...expected '" ++ exp ++ "' but encountered '" ++ tok ++ "' instead....abort"
+ 
+-- rules: F -> (E)
+--        F -> <digits>
+parseF :: String -> [String] -> (String, [String])
+parseF accepted []      =  abortParser "Parse error...truncated input....abort"
+parseF accepted ("(":tokens) =
+  let (acc,rest) = parseE (accepted++"(") tokens 
+    in expect ")" acc rest
+parseF accepted (tok:tokens)
+  | isDigit (head tok)  =  (accepted++tok, tokens)
+  | otherwise           =  abortParser $ "Syntax Error: unexpected '" ++ tok ++ "'"
 
--- Top-level parser function
-parser :: String -> (Integer, [String])
-parser str = parseS (lexer str)
-
--- Evaluate expression
-parseEvalExpr :: String -> Integer
-parseEvalExpr str =
-  case parser str of
-    (val, []) -> val
-    (_, rest) -> error $ "Parse error: unprocessed input '" ++ unwords rest ++ "'"
-
+parser :: String -> (String,[String])
+parser str = parseS "" (lexer str)
