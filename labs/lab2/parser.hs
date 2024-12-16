@@ -97,8 +97,8 @@ expect exp accepted (tok:tokens)
  
 -- rules: F -> (E)
 --        F -> <digits>
-parseF :: String -> [String] -> (String, [String])
-parseF accepted []      =  abortParser "Parse error...truncated input....abort"
+parseF :: String -> (Integer, [String])
+parseF [] =  abortParser "Parse error...truncated input....abort"
 parseF accepted ("(":tokens) =
   let (acc,rest) = parseE (accepted++"(") tokens 
     in expect ")" acc rest
