@@ -1,0 +1,3 @@
+[p or r; q <- r; ~q; t <- p]
+ENTAILS
+[s or ~(s -> t)]
